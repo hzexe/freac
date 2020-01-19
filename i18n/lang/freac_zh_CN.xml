@@ -112,9 +112,9 @@
       </section>
 
       <section name="Encode">
-	<entry id="1500" string="Start encoding">启动编码</entry>
-	<entry id="1501" string="Start encoding (deleting original files)">启动编码（删除源文件）</entry>
-	<entry id="1502" string="Start encoding with">启动编码</entry>
+	<entry id="1500" string="Start encoding">开始编码</entry>
+	<entry id="1501" string="Start encoding (deleting original files)">开始编码（删除源文件）</entry>
+	<entry id="1502" string="Start encoding with">开始编码</entry>
 	<entry id="1503" string="Pause/resume encoding">暂停/继续编码</entry>
 	<entry id="1504" string="Stop encoding">停止编码</entry>
 	<entry id="1505" string="Encoder options">编码器选项</entry>
@@ -146,8 +146,8 @@
       <entry id="2005" string="Submit CDDB data">提交 CDDB 数据</entry>
       <entry id="2006" string="Configure general settings">设置常规选项</entry>
       <entry id="2007" string="Configure the selected audio encoder">设置选中的音频编码器</entry>
-      <entry id="2008" string="Start the encoding process">启动编码处理</entry>
-      <entry id="2009" string="Start the encoding process (deleting original files)">启动编码处理（删除源文件）</entry>
+      <entry id="2008" string="Start the encoding process">开始编码处理</entry>
+      <entry id="2009" string="Start the encoding process (deleting original files)">开始编码处理（删除源文件）</entry>
       <entry id="2010" string="Pause/resume encoding">暂停/继续编码</entry>
       <entry id="2011" string="Stop encoding">停止编码</entry>
     </section>
@@ -179,7 +179,7 @@
       <entry id="3023" string="Interpret string as">将字符串翻译为</entry>
       <entry id="3024" string="selected tracks">已选曲目</entry>
       <entry id="3025" string="Adjust upper/lower case">调整大小写</entry>
-      <entry id="3026" string="all words upper case">全部词大写</entry>
+      <entry id="3026" string="all words upper case">全部大写</entry>
       <entry id="3027" string="long words upper case">长词大写</entry>
       <entry id="3028" string="first letter upper case">首字母大写</entry>
       <entry id="3029" string="all lower case">全部小写</entry>
@@ -215,7 +215,7 @@
       </section>
 
       <section name="Add by pattern">
-	<entry id="3200" string="Add files by pattern">按照样式添加文件</entry>
+	<entry id="3200" string="Add files by pattern">按照类型添加文件</entry>
 	<entry id="3201" string="Pattern">样式</entry>
 	<entry id="3202" string="Start folder">起始文件夹</entry>
 	<entry id="3203" string="Filename pattern">文件名样式</entry>
@@ -230,7 +230,7 @@
 
       <section name="Errors">
 	<entry id="3400" string="You did not select a track!">你没有选择文件！</entry>
-	<entry id="3401" string="No files found matching pattern: %1">找不到符合样式的文件：%1</entry>
+	<entry id="3401" string="No files found matching pattern: %1">找不到符合类型的文件：%1</entry>
       </section>
     </section>
 
@@ -366,7 +366,7 @@
       <entry id="5010" string="DSP">DSP</entry>
       <entry id="5011" string="Extensions">扩展</entry>
       <entry id="5012" string="Other">其他</entry>
-      <entry id="5013" string="Active configuration">正在使用的配置</entry>
+      <entry id="5013" string="Active configuration">当前配置</entry>
       <entry id="5014" string="New">新建</entry>
       <entry id="5015" string="Delete">删除</entry>
       <entry id="5016" string="Command line arguments">命令行参数</entry>
@@ -451,7 +451,7 @@
 	</section>
 
 	<section name="Errors">
-	  <entry id="5350" string="Please enter a valid eMail address.">请输入一个有效的 e-Mai l地址。</entry>
+	  <entry id="5350" string="Please enter a valid eMail address.">请输入一个有效的电子邮件地址。</entry>
 	  <entry id="5351" string="The freedb CDDBP protocol cannot be used over HTTP&#10;Forward proxies!&#10;&#10;Would you like to change the protocol to HTTP?">freedb 的 CDDBP 通讯协议无法使用 HTTP 正向代理服务器！&#10;您是否要更换 HTTP 通讯协议？</entry>
 	</section>
       </section>
@@ -522,7 +522,7 @@
 	  <entry id="5662" string="Bitrate">比特率</entry>
 	  <entry id="5663" string="Sampling rate">采样率</entry>
 	  <entry id="5664" string="Channels">声道</entry>
-	  <entry id="5665" string="Sample resolution">采样分辨率</entry>
+	  <entry id="5665" string="Sample resolution">采样率</entry>
 	  <entry id="5666" string="CD drive">CD 驱动器</entry>
 	</section>
       </section>
@@ -830,7 +830,7 @@
 	<section name="Quality">
 	  <entry id="33200" string="Bitrate">比特率</entry>
 	  <entry id="33201" string="Bitrate / Quality">比特率/品质</entry>
-	  <entry id="33202" string="Bitrate per channel">声道比特率</entry>
+	  <entry id="33202" string="Bitrate per channel">每声道比特率</entry>
 	  <entry id="33203" string="Set quality">设置品质</entry>
 	  <entry id="33204" string="Stereo mode">立体声模式</entry>
 	  <entry id="33205" string="Allow Joint Stereo">允许使用混合立体声</entry>
