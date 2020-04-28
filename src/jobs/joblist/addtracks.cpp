@@ -164,7 +164,7 @@ Error freac::JobAddTracks::Perform()
 		joblist->onComponentAddTrack.Emit(track);
 
 		track = joblist->getTrackList.Call()->GetLast();
-		tracks.Add(track, track.GetTrackID());
+		tracks.Add(track);
 
 		SetProgress((i + 1) * 1000 / urls.Length());
 	}
@@ -180,8 +180,8 @@ Error freac::JobAddTracks::Perform()
 		 */
 		Bool	 autoRip	 = configuration->GetIntValue(Config::CategoryRipperID, Config::RipperAutoRipID, Config::RipperAutoRipDefault);
 		String	 filenamePattern = configuration->GetStringValue(Config::CategorySettingsID, Config::SettingsEncoderFilenamePatternID, Config::SettingsEncoderFilenamePatternDefault);
- 
-		if (autoCDRead && autoRip && (cdInfo != NIL || filenamePattern.Contains("<currenttime>"))) Converter().Convert(tracks);
+
+		if (autoCDRead && autoRip && (cdInfo != NIL || filenamePattern.Contains("<currenttime>"))) Converter().Convert(tracks, autoRip);
 	}
 
 	urls.RemoveAll();

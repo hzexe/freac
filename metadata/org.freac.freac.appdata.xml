@@ -13,8 +13,8 @@
     </content_rating>
     <description>
         <p>
-            fre:ac is a free and open source audio converter. It comes with
-            an integrated tag editor and converts between various formats.
+            fre:ac is a free and open source audio converter that comes with
+            an integrated tag editor and supports various audio file formats.
         </p>
         <p>
             Features include:
@@ -47,6 +47,105 @@
         </screenshot>
     </screenshots>
     <releases>
+        <release version="1.1.1" date="2020-04-19">
+            <description>
+                <p>Improvements:</p>
+                <ul>
+                    <li>Improved file size and bitrate calculation for chapters and cue sheet tracks</li>
+                    <li>Added &lt;discid&gt; placeholder for use in filename patterns</li>
+                    <li>Added an optional disc ID column to the joblist</li>
+                    <li>Added an option to eject the disc after ripping to freaccmd</li>
+                    <li>Allow specifying device path instead of drive number in freaccmd</li>
+                </ul>
+                <p>Bug fixes:</p>
+                <ul>
+                   <li>Fixed crash of freaccmd when querying CDDB while DISPLAY variable is not set</li>
+                   <li>Fixed ripping of first CD track in paranoia mode on Windows</li>
+                   <li>Fixed several issues creating CBR MP3 files in SuperFast mode</li>
+                   <li>Fixed calculation of track conversion speed factor in log files</li>
+                </ul>
+                <p>Updated codecs:</p>
+                <ul>
+                    <li>Updated Monkey's Audio to version 5.33</li>
+                    <li>Updated avPack to version 5.3.0</li>
+                </ul>
+                <p>Updated translations:</p>
+                <ul>
+                    <li>Updated Portuguese (Brazilian) translation</li>
+                </ul>
+            </description>
+        </release>
+        <release version="1.1" date="2020-03-29">
+            <description>
+                <p>Bug fixes:</p>
+                <ul>
+                   <li>Fixed freaccmd ejecting the CD after ripping 1 track with eject option is enabled in fre:ac</li>
+                   <li>Fixed crash of freaccmd when DISPLAY variable is not set</li>
+                </ul>
+            </description>
+        </release>
+        <release version="1.1~rc2" date="2020-03-22">
+            <description>
+                <p>Bug fixes:</p>
+                <ul>
+                   <li>Fixed inability to read raw AAC files with the FAAD2 decoder</li>
+                   <li>Fixed cursor positioning and text selection in right-to-left mode</li>
+                </ul>
+                <p>Updated codecs:</p>
+                <ul>
+                    <li>Updated Monkey's Audio to version 5.24</li>
+                </ul>
+                <p>Updated translations:</p>
+                <ul>
+                    <li>Updated Serbian translations</li>
+                </ul>
+            </description>
+        </release>
+        <release version="1.1~rc1" date="2020-03-08">
+            <description>
+                <p>Improvements:</p>
+                <ul>
+                    <li>Now passing float samples to LAME encoder directly if sample format is float</li>
+                    <li>Made automatic ripping work when using the single output file option</li>
+                    <li>Added options to control chapter information and cover art to freaccmd</li>
+                    <li>Handle Ctrl+C in freaccmd to clean up temporary files when aborted</li>
+                    <li>Improved HiDPI detection</li>
+                    <li>Log CDDB information when ripping</li>
+                </ul>
+                <p>Bug fixes:</p>
+                <ul>
+                   <li>Fixed file modification time stamp getting lost when output verification is active</li>
+                   <li>Fixed file creation time stamp not being preserved despite option being enabled</li>
+                   <li>Fixed freaccmd not correctly handling relative output folders</li>
+                </ul>
+            </description>
+        </release>
+        <release version="1.1~beta3" date="2020-02-09">
+            <description>
+                <p>Improvements:</p>
+                <ul>
+                    <li>Prepare for freedb.org shutdown on 31st March 2020</li>
+                    <li>Display current signal processing settings in status area</li>
+                    <li>Added a toolbar button to configure signal processing</li>
+                    <li>Added new tips to Tip of the Day dialog</li>
+                    <li>Added separate Windows Wave File Output entry to encoder list</li>
+                </ul>
+                <p>Bug fixes:</p>
+                <ul>
+                   <li>Fixed issues opening Opus files with a .ogg extension</li>
+                   <li>Fixed Monkey's Audio encoder not showing up in 64 bit builds</li>
+                   <li>Fixed some issues with freaccmd command line interface</li>
+                </ul>
+                <p>Updated codecs:</p>
+                <ul>
+                    <li>Updated Monkey's Audio to version 5.18</li>
+                </ul>
+                <p>Updated translations:</p>
+                <ul>
+                    <li>Updated Chinese (simplified) translation</li>
+                </ul>
+            </description>
+        </release>
         <release version="1.1~beta2" date="2020-01-12">
             <description>
                 <p>Improvements:</p>
@@ -87,63 +186,6 @@
                     <li>Fixed invalid file time for CD rips when using "Keep time stamps" option</li>
                     <li>Fixed MP4 AAC files not always being gapless</li>
                     <li>Fixed some keyboard input issues on Linux</li>
-                </ul>
-            </description>
-        </release>
-        <release version="1.1~alpha20190423" date="2019-04-23">
-            <description>
-                <p>New features:</p>
-                <ul>
-                    <li>Added support for ripping with more drives than CPU cores available</li>
-                    <li>Added an option to keep timestamps of source files</li>
-                    <li>Added support for PulseAudio output</li>
-                </ul>
-                <p>Enhancements:</p>
-                <ul>
-                    <li>Improved interoperability of playlist files with VLC</li>
-                    <li>Improved handling of cue sheets referencing multiple files</li>
-                    <li>Improved handling of WAV files with unknown length</li>
-                    <li>Added support for drag &amp; drop in the tag editor</li>
-                </ul>
-                <p>Bug fixes:</p>
-                <ul>
-                    <li>Fixed crash when showing freedb multi-match dialog</li>
-                    <li>Fixed float samples processing with Core Audio encoder</li>
-                    <li>Fixed MP4 output issues when in and out files are the same</li>
-                    <li>Fixed Opus granule pos calculation and vendor string</li>
-                    <li>Fixed Ogg serial number generation</li>
-                    <li>Fixed handling of very short Ogg files</li>
-                    <li>Fixed several stability issues</li>
-                </ul>
-            </description>
-        </release>
-        <release version="1.1~alpha20181201a" date="2018-12-02">
-            <description>
-                <p>Bug fixes:</p>
-                <ul>
-                    <li>Fixed CD ripping issues</li>
-                </ul>
-            </description>
-        </release>
-        <release version="1.1~alpha20181201" date="2018-12-01">
-            <description>
-                <p>New features:</p>
-                <ul>
-                    <li>Notification component</li>
-                    <li>Option to switch stereo channels</li>
-                </ul>
-                <p>Enhancements:</p>
-                <ul>
-                    <li>Read/write ID3v2 from/to .wav files</li>
-                    <li>Read cue sheets embedded in ID3v2 tags</li>
-                    <li>Improved performance when reading large MP4/M4A files</li>
-                    <li>Respect GDK_SCALE environment variable on X11 systems</li>
-                </ul>
-                <p>Bug fixes:</p>
-                <ul>
-                    <li>Fixed crash when using the channel converter to convert mono to stereo</li>
-                    <li>Fixed encoding mono MP3s with LAME</li>
-                    <li>Fixed issues writing MP4 files when &lt;directory&gt; pattern is used</li>
                 </ul>
             </description>
         </release>

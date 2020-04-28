@@ -1,5 +1,5 @@
  /* fre:ac - free audio converter
-  * Copyright (C) 2001-2019 Robert Kausch <robert.kausch@freac.org>
+  * Copyright (C) 2001-2020 Robert Kausch <robert.kausch@freac.org>
   *
   * This program is free software; you can redistribute it and/or
   * modify it under the terms of the GNU General Public License as
@@ -12,6 +12,7 @@
 
 #include <startconsole.h>
 #include <joblist.h>
+#include <utilities.h>
 #include <config.h>
 
 #include <engine/converter.h>
@@ -20,13 +21,49 @@
 #include <jobs/joblist/addfiles.h>
 #include <jobs/joblist/addtracks.h>
 
+#ifdef __WIN32__
+#	include <windows.h>
+#else
+#	include <unistd.h>
+#	include <signal.h>
+#	include <limits.h>
+
+#	ifndef PATH_MAX
+#		define PATH_MAX 32768
+#	endif
+#endif
+
 using namespace smooth::IO;
 
 using namespace BoCA;
 using namespace BoCA::AS;
 
+#ifdef __WIN32__
+static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
+{
+	if (ctrlType != CTRL_C_EVENT	  && ctrlType != CTRL_CLOSE_EVENT &&
+	    ctrlType != CTRL_LOGOFF_EVENT && ctrlType != CTRL_SHUTDOWN_EVENT) return FALSE;
+
+	freac::freacCommandline::Get()->Stop();
+
+	return TRUE;
+}
+#else
+static void ConsoleSignalHandler(int signal)
+{
+	freac::freacCommandline::Get()->Stop();
+}
+#endif
+
 Int StartConsole(const Array<String> &args)
 {
+#ifdef __WIN32__
+	SetConsoleCtrlHandler(&ConsoleCtrlHandler, TRUE);
+#else
+	signal(SIGINT, &ConsoleSignalHandler);
+	signal(SIGTERM, &ConsoleSignalHandler);
+#endif
+
 	freac::freacCommandline::Get(args);
 	freac::freacCommandline::Free();
 
@@ -45,7 +82,7 @@ Void freac::freacCommandline::Free()
 	if (instance != NIL) delete (freacCommandline *) instance;
 }
 
-freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args(arguments)
+freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args(arguments), stopped(False)
 {
 	Registry	&boca	= Registry::Get();
 
@@ -68,6 +105,10 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 			if (i == 0) Console::OutputString(String("\t").Append(i18n->TranslateString("Default configuration", "Configuration")).Append("\n"));
 			else	    Console::OutputString(String("\t").Append(config->GetNthConfigurationName(i)).Append("\n"));
 		}
+
+#ifndef __WIN32__
+		Console::OutputString("\n");
+#endif
 
 		return;
 	}
@@ -97,9 +138,10 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 		config->SetActiveConfiguration(configName);
 	}
 
-	/* Set console mode.
+	/* Set console mode and activate English language.
 	 */
 	config->SetIntValue(Config::CategorySettingsID, Config::SettingsEnableConsoleID, True);
+	i18n->ActivateLanguage("internal");
 
 	/* Configure the converter.
 	 */
@@ -107,8 +149,8 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 
 	Array<String>	 files;
 	String		 pattern	= "<filename>";
-	String		 outfile;
-	String		 outdir		= Directory::GetActiveDirectory();
+	String		 outputFile;
+	String		 outputFolder	= Directory::GetActiveDirectory();
 
 	Bool		 superFast	= ScanForProgramOption("--superfast");
 	String		 threads	= "0";
@@ -118,14 +160,17 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 	String		 timeout	= "120";
 	Bool		 cddb		= ScanForProgramOption("--cddb");
 
+	Bool		 ignoreChapters	= ScanForProgramOption("--ignore-chapters");
+	Bool		 ignoreCoverArt	= ScanForProgramOption("--ignore-coverart");
+
 	Bool		 quiet		= ScanForProgramOption("--quiet");
 
 	encoderID = "lame";
 
 	if (!ScanForProgramOption("--encoder=%VALUE", &encoderID)) ScanForProgramOption("-e %VALUE", &encoderID);
 	if (!ScanForProgramOption("--help=%VALUE",    &helpenc))   ScanForProgramOption("-h %VALUE", &helpenc);
-								   ScanForProgramOption("-d %VALUE", &outdir);
-								   ScanForProgramOption("-o %VALUE", &outfile);
+								   ScanForProgramOption("-d %VALUE", &outputFolder);
+								   ScanForProgramOption("-o %VALUE", &outputFile);
 	if (!ScanForProgramOption("--pattern=%VALUE", &pattern))   ScanForProgramOption("-p %VALUE", &pattern);
 
 	ScanForProgramOption("--threads=%VALUE", &threads);
@@ -138,15 +183,73 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 
 	if (info != NIL)
 	{
-		if (info->GetNumberOfDevices() > 0)
+		numDrives = info->GetNumberOfDevices();
+
+		/* List drives if requested.
+		 */
+		if (ScanForProgramOption("--list-drives"))
+		{
+			Console::OutputString(String(freac::appLongName).Append(" ").Append(freac::version).Append(" (").Append(freac::architecture).Append(") command line interface\n").Append(freac::copyright).Append("\n\n"));
+			Console::OutputString("Available CD drives:\n\n");
+			Console::OutputString("\tNumber\tDevice path\tDesignation\n");
+			Console::OutputString("\t------------------------------------------------\n");
+
+			for (Int i = 0; i < numDrives; i++)
+			{
+				const Device	&device = info->GetNthDeviceInfo(i);
+
+				Console::OutputString(String("\t").Append(String::FromInt(i)).Append("\t").Append(device.path).Append(device.path.Length() < 8 ? "\t\t" : "\t").Append(String(device.vendor).Append(" ").Append(device.model).Append(" ").Append(device.revision).Trim()).Append("\n"));
+			}
+
+#ifndef __WIN32__
+			Console::OutputString("\n");
+#endif
+
+			boca.DeleteComponent(info);
+
+			return;
+		}
+
+		/* Scan for CD ripping options.
+		 */
+		if (numDrives > 0)
 		{
 			if (!ScanForProgramOption("--drive=%VALUE", &cdDrive)) ScanForProgramOption("-cd %VALUE", &cdDrive);
 			if (!ScanForProgramOption("--track=%VALUE", &tracks))  ScanForProgramOption("-t %VALUE",  &tracks);
 
 			ScanForProgramOption("--timeout=%VALUE", &timeout);
-		}
 
-		numDrives = info->GetNumberOfDevices();
+#ifndef __WIN32__
+			/* Resolve links to devices.
+			 */
+			Buffer<char>	 buffer(PATH_MAX + 1);
+
+			buffer.Zero();
+
+			while (readlink(cdDrive, buffer, buffer.Size() - 1) != -1)
+			{
+				if (buffer[0] == '/') cdDrive = buffer;
+				else		      cdDrive = File(cdDrive).GetFilePath().Append("/").Append(String(buffer));
+
+				buffer.Zero();
+			}
+
+			cdDrive = File(cdDrive);
+#endif
+
+			/* Find drive number for path.
+			 */
+			for (Int i = 0; i < numDrives; i++)
+			{
+				const Device	&device = info->GetNthDeviceInfo(i);
+
+				if (device.path != cdDrive) continue;
+
+				cdDrive = String::FromInt(i);
+
+				break;
+			}
+		}
 
 		boca.DeleteComponent(info);
 	}
@@ -171,14 +274,14 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 			return;
 		}
 	}
-	else if (tracks != NIL)
+	else if (tracks != NIL || ScanForProgramOption("--list-drives"))
 	{
 		Console::OutputString("Error: CD ripping disabled!");
 	}
 
 	Console::SetTitle(String(freac::appName).Append(" ").Append(freac::version));
 
-	if (files.Length() == 0 || helpenc != NIL)
+	if ((files.Length() == 0 && !ScanForProgramOption("--eject")) || helpenc != NIL)
 	{
 		ShowHelp(helpenc);
 
@@ -296,12 +399,23 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 
 	/* Perform actual conversion.
 	 */
-	if (!outdir.EndsWith(Directory::GetDirectoryDelimiter())) outdir.Append(Directory::GetDirectoryDelimiter());
-
 	config->SetStringValue(Config::CategorySettingsID, Config::SettingsEncoderID, String(encoderID).Append("-enc"));
 
-	config->SetStringValue(Config::CategorySettingsID, Config::SettingsEncoderOutputDirectoryID, outdir);
+	config->SetIntValue(Config::CategorySettingsID, Config::SettingsEncodeToSingleFileID, True);
+	config->SetStringValue(Config::CategorySettingsID, Config::SettingsSingleFilenameID, outputFile);
+
+	config->SetIntValue(Config::CategorySettingsID, Config::SettingsEncodeOnTheFlyID, True);
+	config->SetIntValue(Config::CategorySettingsID, Config::SettingsDeleteAfterEncodingID, False);
+	config->SetIntValue(Config::CategorySettingsID, Config::SettingsAddEncodedTracksID, False);
+
+	config->SetIntValue(Config::CategorySettingsID, Config::SettingsWriteToInputDirectoryID, False);
+	config->SetStringValue(Config::CategorySettingsID, Config::SettingsEncoderOutputDirectoryID, Directory(outputFolder));
 	config->SetStringValue(Config::CategorySettingsID, Config::SettingsEncoderFilenamePatternID, pattern);
+
+	config->SetIntValue(Config::CategoryProcessingID, Config::ProcessingEnableProcessingID, False);
+
+	config->SetIntValue(Config::CategoryVerificationID, Config::VerificationVerifyInputID, False);
+	config->SetIntValue(Config::CategoryVerificationID, Config::VerificationVerifyOutputID, False);
 
 	config->SetIntValue(Config::CategoryResourcesID, Config::ResourcesEnableParallelConversionsID, True);
 	config->SetIntValue(Config::CategoryResourcesID, Config::ResourcesEnableSuperFastModeID, superFast);
@@ -314,19 +428,25 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 	config->SetIntValue(Config::CategoryRipperID, Config::RipperLockTrayID, Config::RipperLockTrayDefault);
 	config->SetIntValue(Config::CategoryRipperID, Config::RipperTimeoutID, Config::RipperTimeoutDefault);
 
-	config->SetIntValue(Config::CategoryTagsID, Config::TagsReadChaptersID, False);
+	config->SetIntValue(Config::CategoryRipperID, Config::RipperEjectAfterRippingID, False);
+
+	config->SetIntValue(Config::CategoryTagsID, Config::TagsReadChaptersID, !ignoreChapters);
+	config->SetIntValue(Config::CategoryTagsID, Config::TagsWriteChaptersID, !ignoreChapters);
+
+	config->SetIntValue(Config::CategoryTagsID, Config::TagsReadEmbeddedCueSheetsID, !ignoreChapters);
+	config->SetIntValue(Config::CategoryTagsID, Config::TagsPreferCueSheetsToChaptersID, Config::TagsPreferCueSheetsToChaptersDefault);
+
+	config->SetIntValue(Config::CategoryTagsID, Config::TagsCoverArtReadFromTagsID, !ignoreCoverArt);
+	config->SetIntValue(Config::CategoryTagsID, Config::TagsCoverArtReadFromFilesID, False);
+
+	config->SetIntValue(Config::CategoryTagsID, Config::TagsCoverArtWriteToTagsID, !ignoreCoverArt);
+	config->SetIntValue(Config::CategoryTagsID, Config::TagsCoverArtWriteToFilesID, False);
 
 	config->SetIntValue(Config::CategoryPlaylistID, Config::PlaylistCreatePlaylistID, False);
 	config->SetIntValue(Config::CategoryPlaylistID, Config::PlaylistCreateCueSheetID, False);
 
-	config->SetIntValue(Config::CategorySettingsID, Config::SettingsWriteToInputDirectoryID, False);
-	config->SetIntValue(Config::CategorySettingsID, Config::SettingsEncodeToSingleFileID, False);
-
-	if (files.Length() > 1 && outfile != NIL)
+	if (files.Length() > 1 && outputFile != NIL)
 	{
-		config->SetIntValue(Config::CategorySettingsID, Config::SettingsEncodeToSingleFileID, True);
-		config->SetStringValue(Config::CategorySettingsID, Config::SettingsSingleFilenameID, outfile);
-
 		JobConvert::onEncodeTrack.Connect(&freacCommandline::OnEncodeTrack, this);
 
 		/* Check if input files exist.
@@ -361,13 +481,17 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 		while (Job::GetPlannedJobs().Length()	> 0) S::System::System::Sleep(10);
 		while (Job::GetRunningJobs().Length()	> 0) S::System::System::Sleep(10);
 
-		/* Convert them.
-		 */
 		if (joblist->GetNOfTracks() > 0)
 		{
-			Converter().Convert(*joblist->GetTrackList(), False);
+			/* Convert tracks in joblist.
+			 */
+			Converter().Convert(*joblist->GetTrackList(), False, False);
 
-			if (!quiet) Console::OutputString("done.\n");
+			if (!quiet)
+			{
+				if (!stopped) Console::OutputString("done.\n");
+				else	      Console::OutputString("aborted.\n");
+			}
 		}
 		else
 		{
@@ -425,24 +549,47 @@ freac::freacCommandline::freacCommandline(const Array<String> &arguments) : args
 				continue;
 			}
 
-			/* Convert it.
+			/* Set output file name.
+			 */
+			if (outputFile == NIL)
+			{
+				Track	 track = joblist->GetNthTrack(0);
+
+				config->SetStringValue(Config::CategorySettingsID, Config::SettingsSingleFilenameID, Utilities::GetOutputFileName(track));
+			}
+
+			/* Convert track in joblist.
 			 */
 			if (!quiet) Console::OutputString(String("Processing file: ").Append(currentFile).Append("..."));
 
-			Track	 track = joblist->GetNthTrack(0);
+			Converter().Convert(*joblist->GetTrackList(), False, False);
 
-			track.outputFile = outfile;
+			joblist->RemoveAllTracks();
 
-			joblist->UpdateTrackInfo(track);
+			if (!quiet)
+			{
+				if (!stopped) Console::OutputString("done.\n");
+				else	      Console::OutputString("aborted.\n");
+			}
 
-			Converter().Convert(*joblist->GetTrackList(), False);
-
-			joblist->RemoveNthTrack(0);
-
-			if (!quiet) Console::OutputString("done.\n");
+			if (stopped) break;
 		}
 
 		delete joblist;
+	}
+
+	/* Eject disc if requested.
+	 */
+	if (ScanForProgramOption("--eject") && !stopped)
+	{
+		DeviceInfoComponent	*info = boca.CreateDeviceInfoComponent();
+
+		if (info != NIL)
+		{
+			info->OpenNthDeviceTray(cdDrive.ToInt() < numDrives ? cdDrive.ToInt() : 0);
+
+			boca.DeleteComponent(info);
+		}
 	}
 }
 
@@ -698,6 +845,13 @@ Bool freac::freacCommandline::TracksToFiles(const String &tracks, Array<String> 
 	return True;
 }
 
+Void freac::freacCommandline::Stop()
+{
+	stopped = True;
+
+	JobConvert::Stop();
+}
+
 Void freac::freacCommandline::ShowHelp(const String &helpenc)
 {
 	Console::OutputString(String(freac::appLongName).Append(" ").Append(freac::version).Append(" (").Append(freac::architecture).Append(") command line interface\n").Append(freac::copyright).Append("\n\n"));
@@ -719,10 +873,12 @@ Void freac::freacCommandline::ShowHelp(const String &helpenc)
 		{
 			if (info->GetNumberOfDevices() > 0)
 			{
-				Console::OutputString("  --drive=<n>     | -cd <n>\tSpecify active CD drive (0..n)\n");
+				Console::OutputString("  --list-drives\t\t\tPrint a list of available CD drives\n\n");
+				Console::OutputString("  --drive=<n|id>  | -cd <n|id>\tSpecify active CD drive (0..n or device path)\n");
 				Console::OutputString("  --track=<n>     | -t <n>\tSpecify input track(s) to rip (e.g. 1-5,7,9 or 'all')\n");
 				Console::OutputString("  --timeout=<s>\t\t\tTimeout for CD track ripping (default is 120 seconds)\n");
-				Console::OutputString("  --cddb\t\t\tEnable CDDB database lookup\n\n");
+				Console::OutputString("  --cddb\t\t\tEnable CDDB database lookup\n");
+				Console::OutputString("  --eject\t\t\tEject disc after ripping\n\n");
 			}
 
 			boca.DeleteComponent(info);
@@ -730,6 +886,9 @@ Void freac::freacCommandline::ShowHelp(const String &helpenc)
 
 		Console::OutputString("  --superfast\t\t\tEnable SuperFast mode\n");
 		Console::OutputString("  --threads=<n>\t\t\tSpecify number of threads to use in SuperFast mode\n\n");
+
+		Console::OutputString("  --ignore-chapters\t\tDo not write chapter information to tags\n\n");
+		Console::OutputString("  --ignore-coverart\t\tDo not write cover images to tags\n\n");
 
 		Console::OutputString("  --list-configs\t\tPrint a list of available configurations\n");
 		Console::OutputString("  --config=<cfg>\t\tSpecify configuration to use\n\n");
